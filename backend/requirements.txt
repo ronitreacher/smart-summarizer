@@ -1,0 +1,7 @@
+Flask
+Flask-CORS
+python-dotenv
+openai # Or transformers, depending on your chosen NLP model
+SpeechRecognition # For local STT, or you can use AssemblyAI/Whisper client libraries
+pydub # For audio file handling if needed
+gunicorn

@@ -1,0 +1,25 @@
+# backend/.dockerignore
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and editor directories
+.idea/
+.vscode/
+
+# Local uploads folder (if you test locally)
+uploads/
+
+# Environment files
+.env
+
+# Test files
+tests/
+*.pytest_cache/

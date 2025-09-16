@@ -1,0 +1,71 @@
+# cloudbuild.yaml (at the project root)
+
+steps:
+# 1. Build the backend Docker image
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/backend:latest',
+    './backend'
+  ]
+
+# 2. Push the backend image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/backend:latest']
+
+# 3. Deploy the backend service to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'gcloud'
+  args: [
+    'run', 'deploy', 'smart-summarizer-backend',
+    '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/backend:latest',
+    '--region', 'us-central1',
+    '--platform', 'managed',
+    '--allow-unauthenticated',
+    # THIS LINE IS NOW CORRECTED TO MATCH YOUR SECRET NAME
+    '--set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest'
+  ]
+  id: 'deploy-backend'
+
+# 4. Get the backend URL to pass to the frontend build
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud run services describe smart-summarizer-backend \
+      --platform managed \
+      --region us-central1 \
+      --format 'value(status.url)' > /workspace/backend_url.txt
+  id: 'get-backend-url'
+
+# 5. Build the frontend Docker image with the backend URL
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    docker build \
+      --build-arg REACT_APP_API_URL=$(cat /workspace/backend_url.txt) \
+      -t us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/frontend:latest \
+      ./frontend
+
+# 6. Push the frontend image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/frontend:latest']
+
+# 7. Deploy the frontend service to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'gcloud'
+  args: [
+    'run', 'deploy', 'smart-summarizer-frontend',
+    '--image', 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/frontend:latest',
+    '--region', 'us-central1',
+    '--platform', 'managed',
+    '--allow-unauthenticated'
+  ]
+
+# The 'images' block is still good practice for official image list.
+images:
+- 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/backend:latest'
+- 'us-central1-docker.pkg.dev/${PROJECT_ID}/smart-summarizer-repo/frontend:latest'
